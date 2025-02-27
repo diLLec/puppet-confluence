@@ -6,11 +6,13 @@ class confluence (
 
   # JVM Settings
   $javahome                                                      = undef,
+  Enum['openjdk-17', 'openjdk-11', 'oracle-jdk-1.8', 'custom'] $jvm_type       = 'openjdk-11',
   $jvm_xms                                                       = '256m',
   $jvm_xmx                                                       = '1024m',
   $jvm_permgen                                                   = '256m',
+  Boolean $big_instances_opts                                    = false,
   $java_opts                                                     = '',
-  Variant[String,Array[String]] $catalina_opts                   = '',
+  Optional[Variant[String,Array[String]]] $catalina_opts         = undef,
   # Confluence Settings
   Pattern[/^(?:(\d+)\.)?(?:(\d+)\.)?(\*|\d+)(|[a-z])$/] $version = '5.7.1',
   $product                                                       = 'confluence',
@@ -35,7 +37,9 @@ class confluence (
   # Should we use augeas to manage server.xml or a template file
   Enum['augeas', 'template'] $manage_server_xml                  = 'augeas',
   $tomcat_port                                                   = 8090,
+  $tomcat_redirect_port                                          = 8443,
   $tomcat_max_threads                                            = 150,
+  $tomcat_max_http_header_size                                   = 8192,
   $tomcat_accept_count                                           = 100,
   # Reverse https proxy setting for tomcat
   Hash $tomcat_proxy                                             = {},
@@ -50,6 +54,7 @@ class confluence (
   # incase the confluence service is managed outside of puppet. eg: using the
   # puppetlabs-corosync module: 'crm resource stop confluence && sleep 15'
   $stop_confluence                                               = 'service confluence stop && sleep 15',
+  Boolean $upgrade_recovery_file                                 = true,
   # Enable SingleSignOn via Crowd
   $enable_sso                                                    = false,
   $application_name                                              = 'crowd',

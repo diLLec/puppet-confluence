@@ -1,4 +1,6 @@
-require 'spec_helper.rb'
+# frozen_string_literal: true
+
+require 'spec_helper'
 
 describe 'confluence' do
   on_supported_os.each do |os, fs_facts|
@@ -21,6 +23,7 @@ describe 'confluence' do
           it { is_expected.to contain_file('/opt/confluence/atlassian-confluence-5.5.6/confluence/WEB-INF/classes/confluence-init.properties') }
           it { is_expected.to contain_augeas('/opt/confluence/atlassian-confluence-5.5.6/conf/server.xml') }
         end
+
         context 'with param manage_server_xml set to template' do
           let(:params) do
             {
@@ -34,6 +37,7 @@ describe 'confluence' do
           it { is_expected.to contain_file('/opt/confluence/atlassian-confluence-5.5.6/confluence/WEB-INF/classes/confluence-init.properties') }
           it { is_expected.to contain_file('/opt/confluence/atlassian-confluence-5.5.6/conf/server.xml') }
         end
+
         context 'with param manage_server_xml set to template and non default params' do
           let(:params) do
             {
@@ -42,21 +46,26 @@ describe 'confluence' do
               manage_server_xml: 'template',
               context_path: '/confluence1',
               tomcat_port: 8089,
+              tomcat_redirect_port: 443,
+              tomcat_max_http_header_size: 8192,
               tomcat_max_threads: 999,
               tomcat_accept_count: 999,
               tomcat_proxy: {
-                'scheme'      => 'https',
-                'proxyName'   => 'EXAMPLE',
-                'proxyPort'   => '443'
+                'scheme' => 'https',
+                'proxyName' => 'EXAMPLE',
+                'proxyPort' => '443'
               }
             }
           end
 
           it { is_expected.to contain_file('/opt/confluence/atlassian-confluence-5.5.6/bin/setenv.sh') }
           it { is_expected.to contain_file('/opt/confluence/atlassian-confluence-5.5.6/confluence/WEB-INF/classes/confluence-init.properties') }
+
           it do
             is_expected.to contain_file('/opt/confluence/atlassian-confluence-5.5.6/conf/server.xml').
               with_content(%r{port="8089"}).
+              with_content(%r{redirectPort="443"}).
+              with_content(%r{maxHttpHeaderSize="8192"}).
               with_content(%r{maxThreads="999"}).
               with_content(%r{acceptCount="999"}).
               with_content(%r{scheme="https"}).
@@ -65,6 +74,7 @@ describe 'confluence' do
               with_content(%r{Context path="/confluence1"})
           end
         end
+
         context 'with param data_dir set' do
           let(:params) do
             {
@@ -79,6 +89,7 @@ describe 'confluence' do
               with_content(%r{confluence.home=/opt/confluence/confluence-data})
           end
         end
+
         context 'with param data_dir not set and param homdir set' do
           let(:params) do
             {
@@ -93,6 +104,7 @@ describe 'confluence' do
               with_content(%r{confluence.home=/opt/confluence/confluence-home})
           end
         end
+
         context 'with param data_dir set and param homdir set' do
           let(:params) do
             {
@@ -108,6 +120,7 @@ describe 'confluence' do
               with_content(%r{confluence.home=/opt/confluence/confluence-data})
           end
         end
+
         context 'ajp proxy' do
           let(:params) do
             {
@@ -187,7 +200,7 @@ describe 'confluence' do
           it do
             is_expected.to compile.with_all_deps
             is_expected.to contain_file('/opt/confluence/atlassian-confluence-6.12.0/bin/setenv.sh').
-              with_content(%r{CATALINA_OPTS=\"-Dconfluence.upgrade.recovery.file.enabled=false -Dconfluence.cluster.node.name=myhostname \${CATALINA_OPTS}\"})
+              with_content(%r{CATALINA_OPTS="-Dconfluence.upgrade.recovery.file.enabled=false -Dconfluence.cluster.node.name=myhostname \${CATALINA_OPTS}"})
           end
         end
 
@@ -203,8 +216,72 @@ describe 'confluence' do
           it do
             is_expected.to compile.with_all_deps
             is_expected.to contain_file('/opt/confluence/atlassian-confluence-6.12.0/bin/setenv.sh').
-              with_content(%r{CATALINA_OPTS=\"-Dconfluence.upgrade.recovery.file.enabled=false \${CATALINA_OPTS}\"}).
-              with_content(%r{CATALINA_OPTS=\"-Dconfluence.cluster.node.name=myhostname \${CATALINA_OPTS}\"})
+              with_content(%r{CATALINA_OPTS="-Dconfluence.upgrade.recovery.file.enabled=false \${CATALINA_OPTS}"}).
+              with_content(%r{CATALINA_OPTS="-Dconfluence.cluster.node.name=myhostname \${CATALINA_OPTS}"})
+          end
+        end
+
+        context 'default java 11 specific option' do
+          let(:params) do
+            {
+              version: '7.12.0',
+              javahome: '/opt/java'
+            }
+          end
+
+          it do
+            is_expected.to compile.with_all_deps
+            is_expected.to contain_file('/opt/confluence/atlassian-confluence-7.12.0/bin/setenv.sh').
+              with_content(%r{CATALINA_OPTS="-XX:\+ExplicitGCInvokesConcurrent -XX:\+PrintGCDateStamps \${CATALINA_OPTS}"})
+          end
+        end
+
+        context 'default java 11 big instance option' do
+          let(:params) do
+            {
+              version: '7.12.0',
+              javahome: '/opt/java',
+              big_instances_opts: true
+            }
+          end
+
+          it do
+            is_expected.to compile.with_all_deps
+            is_expected.to contain_file('/opt/confluence/atlassian-confluence-7.12.0/bin/setenv.sh').
+              with_content(%r{CATALINA_OPTS="-XX:ReservedCodeCacheSize=384m \${CATALINA_OPTS}"})
+          end
+        end
+
+        context 'java 8 specific option' do
+          let(:params) do
+            {
+              version: '7.12.0',
+              javahome: '/opt/java',
+              jvm_type: 'oracle-jdk-1.8'
+            }
+          end
+
+          it do
+            is_expected.to compile.with_all_deps
+            is_expected.to contain_file('/opt/confluence/atlassian-confluence-7.12.0/bin/setenv.sh').
+              with_content(%r{CATALINA_OPTS="-XX:-PrintGCDetails -XX:\+PrintGCDateStamps -XX:-PrintTenuringDistribution \${CATALINA_OPTS}"})
+          end
+        end
+
+        context 'jdk17 specific option' do
+          let(:params) do
+            {
+              version: '8.5.14',
+              javahome: '/opt/java',
+              jvm_type: 'openjdk-17'
+            }
+          end
+
+          it do
+            is_expected.to compile.with_all_deps
+            is_expected.to contain_file('/opt/confluence/atlassian-confluence-8.5.14/bin/setenv.sh').
+              with_content(%r{CATALINA_OPTS="-XX:\+ExplicitGCInvokesConcurrent \${CATALINA_OPTS}"}).
+              with_content(%r{CATALINA_OPTS="-Xlog:gc\*:file=\$LOGBASEABS/logs/gc-%t.log:tags,time,uptime,level:filecount=5,filesize=2M \${CATALINA_OPTS}"}) # fix this spec test
           end
         end
 
